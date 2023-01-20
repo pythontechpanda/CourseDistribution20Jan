@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from accounts.models import User
+from accounts.models import User, Follow
 from Supplier.models import CoursesOptions, Country,State,City
 from django.contrib import messages
 from Supplier.models import *
@@ -23,6 +23,18 @@ def demo(request):
 
 
 def getProfileData(request):
+    current_user = User.objects.get(id=request.user.id)
+    # print(current_user.username)
+    posts = CreatePost.objects.filter(author=current_user).count()                      # count Total Posts
+    posts_images = CreatePost.objects.filter(author=current_user).order_by("id").reverse()   # show all posted images
+    # print("MY POSTs:  ", posts)
+    user_followers = Follow.objects.filter(followed=current_user).count()     # Count total followers
+    # print("MY Followers : ", user_followers)
+    user = Follow.objects.filter(followed=current_user)
+    print(user)
+  
+
+  
     g=geocoder.ip("me")
     myadd=g.latlng
     print(myadd)
@@ -36,7 +48,13 @@ def getProfileData(request):
     
     #get user data
     data = User.objects.get(id=request.user.id)
-    return render(request, "supplier/profile.html", {'data':data, 'address':address})
+    return render(request, "supplier/profile.html", {'data':data, 
+                                                     'address':address,
+                                                     "user_followers":user_followers,
+                                                     'user':user, "num_of_posts":posts,
+                                                     "posts_images":posts_images,
+                                                     "myfollowers":user
+                                                     })
 
 
 def EditProfile(request):
@@ -204,6 +222,38 @@ def LikeView(request):
 
             post_obj.save()
             like.save()
+    return redirect('/supplier-app/')
+
+
+
+# for helpfull or not 
+
+def InsightfulView(request):
+    # print("Buyer Calling......")
+    user = request.user
+    if request.method =="POST":
+        post_id = request.POST.get('post_id')
+        post_obj = CreatePost.objects.get(id=post_id)
+        # profile = User.objects.get(user=request.user)
+        
+        
+        if user in post_obj.insightful.all():
+            post_obj.insightful.remove(user)
+        else:
+            post_obj.insightful.add(user)
+
+        insightful, created = InsightfulPost.objects.get_or_create(user=user, post_id=post_id)
+
+        if not created:
+            if insightful.value=='insightful':
+                insightful.value='Uninsightful'
+            else:
+                insightful.value='insightful'
+        else:
+            insightful.value='insightful'
+
+            post_obj.save()
+            insightful.save()
     return redirect('/supplier-app/')
 
   

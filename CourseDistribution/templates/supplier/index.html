@@ -35,7 +35,7 @@
              <nav class="iq-sidebar-menu">
                 <ul id="iq-sidebar-toggle" class="iq-menu">
                    <li class="active">
-                      <a href="/supplier-app/" class="iq-waves-effect"><i class="las la-newspaper"></i><span>Newsfeed</span></a>
+                      <a href="/supplier-app/" class="iq-waves-effect"><i class="las la-newspaper"></i><span>Home</span></a>
                    </li>
                    <li>
                       <a href="/supplier-app/profile/" class="iq-waves-effect"><i class="las la-user"></i><span>Profile</span></a>
@@ -750,32 +750,43 @@
                                               <span class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" role="button">
                                                 <form action="{% url 'post_like' %}" method="POST" class='like-form' id='{{post.id}}'>
                                                    {% csrf_token %}
-                                                   <input type="hidden" name="post_id" value={{post.id}}>
-                                                   
-                                                           <button type="submit" class="btn btn">
-                                                           {% if user not in post.like.all %}
-                                                           <i class="ri-thumb-up-line mr-2"></i>
-                                                           {% else %}
-                                                           <i class="ri-thumb-up-line mr-2" style="color:skyblue;"></i>
-                                                           {% endif %}
-                                                           {{post.num_likes}}
-                                                           </button>
-                                                           
-                                                       
-                                                       <div class="ui grid">
-                                                           <div class="column">
-                                                               {% comment %} <div class="like-count{{post.id}}"> {{post.num_likes}} </div> {% endcomment %}
-                                                           </div>
-                                                          
-                                                       </div>
+                                                   <input type="hidden" name="post_id" value={{post.id}}>                                                   
+                                                      <button type="submit" class="btn btn" style="width: 30px;">
+                                                      {% if user not in post.like.all %}
+                                                      <i class="ri-thumb-up-line mr-2"></i>
+                                                      {% else %}
+                                                      <i class="ri-thumb-up-line mr-2" style="color:skyblue;font-size:20px;"></i>
+                                                      {% endif %}
+                                                      <span style="color:#8C8C8C;font-size:12px;">{{post.num_likes}}</span>
+                                                      </button>
                                                </form>
                                               </span>
                                            </div>
                                         </div>
                                      </div>
+
+                                     <!--Insightful section-->
+                                     <div class="total-comment-block">
+                                       <div class="dropdown">
+                                          <form action="{% url 'insight_by' %}" method="POST" class='like-form' id='{{post.id}}'>
+                                             {% csrf_token %}
+                                             <input type="hidden" name="post_id" value={{post.id}}>                                             
+                                                <button type="submit" class="btn btn" >
+                                                {% if user not in post.insightful.all %}
+                                                <i class="ri-lightbulb-line mr-2"></i>
+                                                {% else %}
+                                                <i class="ri-lightbulb-line mr-2" style="color:#DCD703;font-weight:bold;font-size:20px;"></i>
+                                                {% endif %}
+                                                <span style="color:#8C8C8C;font-size:12px;">{{post.num_insightful}}</span>
+                                                </button>
+                                         </form>
+                                       </div>
+                                       
+                                    </div>
+
                                      <div class="total-comment-block">
                                         <div class="dropdown">
-                                          <i class="ri-discuss-line mr-2"></i><a href="{% url 'see_comment' id=post.id %}"><span class="ml-1" style="text-decoration:none;color:blue;">See Comments</span></a>
+                                          <a href="{% url 'see_comment' id=post.id %}"><i class="ri-discuss-line mr-2"></i><span class="ml-1" style="text-decoration:none;color:#000000;font-size:12px;">Comments</span></a>
                                         </div>
                                      </div> 
                                   </div>

@@ -19,5 +19,15 @@ class User(AbstractUser):
     office_email = models.CharField(max_length=200)
     off_phone_no = models.CharField(max_length=12)
     upload_resume = models.FileField(upload_to='documents', blank=True, null=True)
+    follower = models.ManyToManyField("Follow")
     
     
+
+class Follow(models.Model):
+    followed = models.ForeignKey(User, related_name='user_followers', on_delete=models.CASCADE)
+    followed_by = models.ForeignKey(User, related_name='user_follows', on_delete=models.CASCADE)
+    muted = models.BooleanField(default=False)
+    created_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"{self.followed_by.username} started following {self.followed.username}"

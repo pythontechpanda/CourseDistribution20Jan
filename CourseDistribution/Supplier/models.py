@@ -68,6 +68,8 @@ class CreatePost(models.Model):
     discription = models.CharField(max_length=300, null=True)
     like =  models.ManyToManyField(User, related_name="blog_posts", default=None, blank=True)
     comment = models.ManyToManyField(User, related_name="blog_comment", default=None, blank=True)
+    insightful = models.ManyToManyField(User, related_name="insight", default=None, blank=True)
+    followers = models.ManyToManyField(User, related_name="followers", default=None, blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField(default=datetime.now())
     body = models.TextField(max_length=300)
@@ -75,6 +77,8 @@ class CreatePost(models.Model):
     
     def __str__(self):
         return self.author.first_name
+    
+    # for LIKE post
     @property
     def num_likes(self):
         return self.like.all().count()
@@ -94,6 +98,50 @@ class CreatePost(models.Model):
             total_liked += item.like.all().count()
         return total_liked
     
+    
+    # for insightful post or not    
+    @property
+    def num_insightful(self):
+        return self.insightful.all().count()
+    
+    def get_insightful_given_no(self):
+        insightful = self.insightful_set.all()
+        total_insightful = 0
+        for item in insightful:
+            if item.value=='insightful':
+                total_insightful += 1
+        return total_insightful
+
+    def get_insightful_recieved_no(self):
+        posts = self.posts.all()
+        total_insightful = 0
+        for item in posts:
+            total_insightful += item.insightful.all().count()
+        return total_insightful
+    
+    
+    # for follow post or not    
+    @property
+    def num_followers(self):
+        return self.followers.all().count()
+    
+    def get_followers_given_no(self):
+        followers = self.followers_set.all()
+        total_followers = 0
+        for item in followers:
+            if item.value=='followers':
+                total_followers += 1
+        return total_followers
+
+    def get_followers_recieved_no(self):
+        posts = self.posts.all()
+        total_followers = 0
+        for item in posts:
+            total_followers += item.followers.all().count()
+        return total_followers
+    
+    
+    
 LIKE_CHOICES =(
     ('Like', 'Like'),
     ('Unlike','Unlike'),
@@ -107,33 +155,32 @@ class LikePost(models.Model):
     def __str__(self):
         return str(self.post)
     
+
+
+Insightful_CHOICES =(
+    ('insightful', 'insightful'),
+    ('Uninsightful','Uninsightful'),
+)
+    
+class InsightfulPost(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    post = models.ForeignKey(CreatePost, on_delete=models.CASCADE)
+    value = models.CharField(choices=Insightful_CHOICES, default="Insightful", max_length=20)
+    
+    def __str__(self):
+        return str(self.post)
+    
     
     
 class CommentForPost(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(CreatePost, on_delete=models.CASCADE)
     text = models.TextField(max_length=300, null=True)
-    
+    date = models.DateField(default=datetime.now())
     def __str__(self):
         return self.user.first_name
 
 
-class FollowersCount(models.Model):
-    follower = models.CharField(max_length=1000)
-    user = models.CharField(max_length=1000)
-    
- 
-
-    def __str__(self):
-        return self.user
-    
-    
 
 
-# def create_profile(sender, instance, created,  **kwargs):
-#     if created:
-#         user_profile = User(user=instance)
-#         user_profile.save()
-#         user_profile.follower.set([instance.profile.id])
-#         user_profile.save()
-# post_save.connect(create_profile, sender=User)
+

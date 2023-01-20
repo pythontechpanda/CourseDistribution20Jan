@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'accounts',
     'Buyer',
     'Supplier',
-    'MyAdmin'
+    'MyAdmin',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

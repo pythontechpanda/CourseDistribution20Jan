@@ -10,6 +10,7 @@ urlpatterns = [
     path('com-details-edit/<int:id>/', views.CompanyProfileEdit, name="detail"),
     path('new-post/', views.PostCreate, name="post_details"),
     path('like/', views.LikeView, name="post_like"),
+    path('insightful/', views.InsightfulView, name="insight_by"),
     path('comment/<int:id>/', views.post_comment, name="see_comment")
     
 ]

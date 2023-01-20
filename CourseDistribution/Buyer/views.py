@@ -1,6 +1,7 @@
 from MyAdmin.models import Profile
 from django.shortcuts import redirect, render, get_object_or_404
-from accounts.models import User
+from django.contrib.auth.decorators import login_required
+from accounts.models import User, Follow
 from django.contrib import messages
 import uuid
 from django.conf import settings
@@ -14,6 +15,8 @@ import geocoder
 import folium
 from geopy.geocoders import Nominatim
 
+
+@login_required(login_url='signin')
 def demo(request):
     posts = CreatePost.objects.all().order_by("id").reverse()    
     
@@ -29,7 +32,7 @@ def demo(request):
     print('Country:',address['country'])
     return render(request, "buyer/index.html", {'posts': posts, 'address':address})
 
-
+@login_required(login_url='signin')
 def profile_details(request):    
     if request.method == 'POST':
         address = request.POST['address']
@@ -54,7 +57,7 @@ def profile_details(request):
 
 
 
-
+@login_required(login_url='signin')
 def getProfileData(request):
     g=geocoder.ip("me")
     myadd=g.latlng
@@ -71,7 +74,7 @@ def getProfileData(request):
     return render(request, "buyer/profile.html", {'data':data, 'address':address})
 
 
-
+@login_required(login_url='signin')
 def EditStudentProfile(request):
     look = LookingFor.objects.all()
     qualifi = Qualification.objects.all()
@@ -113,7 +116,7 @@ def EditStudentProfile(request):
         return render(request, "buyer/profile-edit.html", {'getData':getData,'look':look,'state':state,'country':country, 'qualifi':qualifi})
 
 
-
+@login_required(login_url='signin')
 def LikeView(request):
     # print("Buyer Calling......")
     user = request.user
@@ -144,6 +147,37 @@ def LikeView(request):
 
 
 
+# for helpfull or not 
+@login_required(login_url='signin')
+def InsightfulView(request):
+    # print("Buyer Calling......")
+    user = request.user
+    if request.method =="POST":
+        post_id = request.POST.get('post_id')
+        post_obj = CreatePost.objects.get(id=post_id)
+        # profile = User.objects.get(user=request.user)
+        
+        
+        if user in post_obj.insightful.all():
+            post_obj.insightful.remove(user)
+        else:
+            post_obj.insightful.add(user)
+
+        insightful, created = InsightfulPost.objects.get_or_create(user=user, post_id=post_id)
+
+        if not created:
+            if insightful.value=='insightful':
+                insightful.value='Uninsightful'
+            else:
+                insightful.value='insightful'
+        else:
+            insightful.value='insightful'
+
+            post_obj.save()
+            insightful.save()
+    return redirect('/buyer-app/')
+
+@login_required(login_url='signin')
 def post_comment(request, id):
     if request.method == "POST":  # submit comment and then reload page
         user = request.user.id
@@ -162,47 +196,274 @@ def post_comment(request, id):
 
 
 
+
 # Code for Follow user By Shubham Raikwar
 
-def followers_count(request):
-    
-    if request.method == 'POST':
-        value = request.POST['value']
-        user = request.POST['user']
-        follower = request.POST['follower']
-        
-        if value == 'follow':
-            followers_cnt = FollowersCount.objects.create(follower=follower, user=user)
-            followers_cnt.save()
-            print("Working follower")
-            return redirect('/buyer-app/followers_count/')
-        else:
-            followers_cnt = FollowersCount.objects.get(follower=follower, user=user)
-            followers_cnt.delete()
-            return redirect('/buyer-app/followers_count/')  
-    else:
-        current_user = request.user
-        print(current_user)
-        logged_in_user = request.user.username
-        user_followers = len(FollowersCount.objects.filter(user=current_user))
-        user_following = len(FollowersCount.objects.filter(follower=current_user))
-        user_followers0 = FollowersCount.objects.filter(user=current_user)
-        user_followers1 = []
-        for i in user_followers0:
-            user_followers0 = i.follower
-            user_followers1.append(user_followers0)
-        if logged_in_user in user_followers1:
-            follow_button_value = 'unfollow'
-        else:
-            follow_button_value = 'follow'
+def view_user_information(request, username):
+    account = get_object_or_404(User, username=username)
+    following = False
+    muted = None
 
-        print(user_followers)
-        return render(request, 'buyer/follower.html', {
-            'current_user': current_user,
-            'user_followers': user_followers,
-            'user_following': user_following,
-            'follow_button_value': follow_button_value
-        })
+    if request.user.is_authenticated:
+        
+        if request.user.id == account.id:
+            return redirect("profile")
+
+        followers = account.follower.filter(
+        followed_by__id=request.user.id
+        )
+        if followers.exists():
+            following = True
+    
+    if following:
+        queryset = followers.first()
+        if queryset.muted:
+            muted = True
+        else:
+            muted = False
+
+    context = {
+        "account": account,
+        "following": following,
+        "muted": muted
+    }
+    return render(request, "buyer/follower.html", context)
+
+
+@login_required(login_url = "login")
+def follow_or_unfollow_user(request, user_id):
+    followed = get_object_or_404(User, id=user_id)
+    followed_by = get_object_or_404(User, id=request.user.id)
+
+    follow, created = Follow.objects.get_or_create(
+        followed=followed,
+        followed_by=followed_by
+    )
+
+    if created:
+        followed.follower.add(follow)
+
+    else:
+        followed.follower.remove(follow)
+        follow.delete()
+
+    return redirect("view_user_information", username=followed.username)
+
+
+# @login_required(login_url='login')
+# def user_notifications(request):
+#     notifications = Notificaiton.objects.filter(
+#         user=request.user,
+#         is_seen=False
+#     )
+
+#     for notification in notifications:
+#         notification.is_seen = True
+#         notification.save()
+        
+#     return render(request, 'notifications.html')
+
+
+@login_required(login_url='login')
+def mute_or_unmute_user(request, user_id):
+    user = get_object_or_404(User, pk=user_id)
+    follower = get_object_or_404(User, pk=request.user.pk)
+    instance = get_object_or_404(
+        Follow,
+        followed=user,
+        followed_by=follower
+    )
+
+    if instance.muted:
+        instance.muted = False
+        instance.save()
+
+    else:
+        instance.muted = True
+        instance.save()
+
+    return redirect('view_user_information', username=user.username)
+
+# def followers_count(request, id):
+#     usr = CreatePost.objects.get(id=id)
+#     # fol = Follow.objects.filter(followed=usr).count()
+#     # print(fol)
+   
+#     return render(request, 'buyer/user_information.html', {'user':usr})
+
+
+
+# def follow(request):
+#     # print("Buyer Calling......")
+#     user = request.user
+#     if request.method =="POST":
+#         post_id = request.POST.get('post_id')
+#         post_obj = CreatePost.objects.get(id=post_id)
+#         print("mypost Id: ", post_id)
+#         # profile = User.objects.get(user=request.user)
+        
+        
+#         if user in post_obj.followers.all():
+#             post_obj.followers.remove(user)
+#         else:
+#             post_obj.followers.add(user)
+
+#         follower, created = Follow.objects.get_or_create(user=user, post_id=post_id)
+
+#         if not created:
+#             if follower.value=='follower':
+#                 follower.value='Unfollower'
+#             else:
+#                 follower.value='follower'
+#         else:
+#             follower.value='follower'
+
+#             post_obj.save()
+#             follower.save()
+#     return redirect('/buyer-app/')
+
+
+
+
+
+
+
+# def unfollow(request,id):
+#     user = request.user
+#     following = get_object_or_404(User, id=id)
+#     Follow.objects.filter(user=user, following=following).delete()
+#     return redirect(request.META.get('HTTP_REFERER'))
+
+
+
+# def followers_count(request, id):
+#     usr = CreatePost.objects.get(id=id)
+#     # fol = Follow.objects.filter(followed=usr).count()
+#     # print(fol)
+#     if request.method == 'POST':
+#         user = request.POST['user']
+#         follower = request.POST['followed']
+        
+#         followers_cnt = Follow.objects.create(followed_id=follower, user_id=user)
+#         followers_cnt.save()
+#         print("Working follower")
+#         # return redirect('/buyer-app/followers_count/')
+#         return redirect(request.META.get('HTTP_REFERER'))
+       
+#     else:
+#         current_user = request.user.id
+#         print(current_user)
+#         logged_in_user = request.user.username
+#         user_followers = len(Follow.objects.filter(user=current_user))
+#         user_following = len(Follow.objects.filter(followed=current_user))
+#         user_followers0 = Follow.objects.filter(user=current_user)
+#         user_followers1 = []
+#         for i in user_followers0:
+#             user_followers0 = i.followed
+#             user_followers1.append(user_followers0)
+#         if logged_in_user in user_followers1:
+#             follow_button_value = 'unfollow'
+#         else:
+#             follow_button_value = 'follow'
+
+#         print("my Followers",user_followers)
+#         return render(request, 'buyer/follower.html', {
+#             'current_user': current_user,
+#             'user_followers': user_followers,
+#             'user_following': user_following,
+#             'follow_button_value': follow_button_value,
+#             'user':usr
+#         })
+
+        # return render(request, 'buyer/follower.html')
+
+
+# @login_required(login_url='signin')
+# def followers_count(request, id):
+#     data = CreatePost.objects.get(id=id)
+#     print(data)
+#     if request.method == 'POST':
+#         value = request.POST['value']
+#         user = request.POST['user']
+#         follower = request.POST['follower']
+        
+#         if value == 'follow':
+#             followers_cnt = FollowersCount(follower=follower, user_id=user)
+#             followers_cnt.save()
+#             print("Working follower")
+#             return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))
+#         else:
+#             followers_cnt = FollowersCount.objects.get(follower=follower, user=user)
+#             followers_cnt.delete()
+#             return redirect(request.META.get('HTTP_REFERER', 'redirect_if_referer_not_found'))  
+#     else:
+#         followerCount =FollowersCount.objects.all().count()
+#         current_user = request.user
+#         print(current_user)
+#         logged_in_user = request.user.username
+#         user_followers = len(FollowersCount.objects.filter(user=current_user))
+#         user_following = len(FollowersCount.objects.filter(follower=current_user))
+#         user_followers0 = FollowersCount.objects.filter(user=current_user)
+#         user_followers1 = []
+#         for i in user_followers0:
+#             user_followers0 = i.follower
+#             user_followers1.append(user_followers0)
+#         if logged_in_user in user_followers1:
+#             follow_button_value = 'unfollow'
+#         else:
+#             follow_button_value = 'follow'
+
+#         print(user_followers)
+#         return render(request, 'buyer/follower.html', {
+#             'current_user': current_user,
+#             'user_followers': user_followers,
+#             'user_following': user_following,
+#             'follow_button_value': follow_button_value,
+#             'follow_by_user':data,
+#             'followerCount':followerCount
+#         })
+
+
+# @login_required(login_url='signin')
+# def followers_count(request):
+    
+#     if request.method == 'POST':
+#         value = request.POST['value']
+#         user = request.POST['user']
+#         follower = request.POST['follower']
+        
+#         if value == 'follow':
+#             followers_cnt = FollowersCount.objects.create(follower=follower, user=user)
+#             followers_cnt.save()
+#             print("Working follower")
+#             return redirect('/buyer-app/followers_count/')
+#         else:
+#             followers_cnt = FollowersCount.objects.get(follower=follower, user=user)
+#             followers_cnt.delete()
+#             return redirect('/buyer-app/followers_count/')  
+#     else:
+#         current_user = request.user
+#         print(current_user)
+#         logged_in_user = request.user.username
+#         user_followers = len(FollowersCount.objects.filter(user=current_user))
+#         user_following = len(FollowersCount.objects.filter(follower=current_user))
+#         user_followers0 = FollowersCount.objects.filter(user=current_user)
+#         user_followers1 = []
+#         for i in user_followers0:
+#             user_followers0 = i.follower
+#             user_followers1.append(user_followers0)
+#         if logged_in_user in user_followers1:
+#             follow_button_value = 'unfollow'
+#         else:
+#             follow_button_value = 'follow'
+
+#         print(user_followers)
+#         return render(request, 'buyer/follower.html', {
+#             'current_user': current_user,
+#             'user_followers': user_followers,
+#             'user_following': user_following,
+#             'follow_button_value': follow_button_value
+#         })
 
             
-        # return render(request, "buyer/follower.html")
+#         # return render(request, "buyer/follower.html")
